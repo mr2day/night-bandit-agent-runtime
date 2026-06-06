@@ -1,0 +1,42 @@
+[project]
+name = "night-bandit-agent-runtime"
+version = "0.1.0"
+description = "The Night Bandit — a capable local-only two-LLM ensemble agent. LangGraph orchestration spine, Pydantic AI typed agent nodes, models served over swirlock-llm-host."
+requires-python = ">=3.10"
+
+# Versions pinned against the live ecosystem as of 2026-06 (see the
+# research notes that drove this build). The langgraph meta-package
+# carries its own caret bounds on langgraph-prebuilt / langgraph-checkpoint
+# (the fix for the 2025 unpinned-resolution breakage), so we only pin the
+# two we depend on directly and let the rest resolve under those bounds.
+dependencies = [
+    # --- Agent framework ---
+    "pydantic-ai-slim==1.106.0",        # custom-model-only; no provider extras
+    "langgraph==1.2.4",                 # orchestration spine
+    "langgraph-checkpoint-postgres==3.1.0",  # durable execution + HITL persistence
+    # --- Service ---
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+    "websockets>=13,<16",               # v5 client to swirlock-llm-host
+    "psycopg[binary,pool]>=3.2,<4",     # Postgres (app tables + checkpointer)
+    "pyjwt[crypto]>=2.9,<3",            # IdP JWT verification
+    "pydantic>=2.7.4,<3",
+    "pydantic-settings>=2.5,<3",
+    "python-dotenv>=1.0,<2",
+    # --- Tools ---
+    "exa-py>=1.8,<2",                   # search_web / fetch_page
+    "playwright>=1.48,<2",              # browse (headless Chromium + screenshot)
+]
+
+[project.scripts]
+night-bandit = "night_bandit.main:run"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+night_bandit = ["py.typed"]

@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Env / secrets — machine-local config never committed
+.env
+service.config.local.py
+*.local.py
+
+# Playwright browser binaries (installed via `playwright install`)
+.playwright/
+
+# Logs
+*.log
