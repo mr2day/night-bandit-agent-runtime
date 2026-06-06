@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # and the LangGraph Postgres checkpointer (durable execution). No
     # default — must be supplied.
     pg_dsn: str = Field(default=..., description="postgresql://user:pass@host:port/db")
+    # All Night Bandit tables + the LangGraph checkpointer tables live in
+    # this schema, so the runtime can share an existing database (whose role
+    # may lack CREATEDB) without colliding with other apps' public-schema
+    # tables. The pool + checkpointer set search_path to this schema.
+    pg_schema: str = "night_bandit"
 
     # --- Tools ---
     exa_api_key: str = Field(default=..., description="Exa API key for search_web / fetch_page")
