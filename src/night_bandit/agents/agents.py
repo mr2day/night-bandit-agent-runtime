@@ -39,13 +39,25 @@ class Verdict(BaseModel):
     )
 
 
+def _repair_format_for(model_id: str) -> str | None:
+    """Pick the tool-call-text repair format from the model family.
+
+    Role-agnostic: only Mistral-family models leak the ``name[ARGS]{...}``
+    pattern the repair targets, so the format follows the model id rather
+    than the proposer/verifier role (which we may swap)."""
+    mid = model_id.lower()
+    if "ministral" in mid or "mistral" in mid:
+        return "mistral"
+    return None
+
+
 def build_proposer(client: LlmHostClient) -> Agent[BanditDeps, str]:
-    """The proposer: drafts answers, calls tools. Runs on Box A."""
+    """The proposer: drafts answers, calls tools."""
     settings = get_settings()
     model = WebSocketModel(
         client,
         model_name=settings.proposer_model_id,
-        tool_call_text_format="mistral",  # Ministral tail-reliability net
+        tool_call_text_format=_repair_format_for(settings.proposer_model_id),
     )
     agent: Agent[BanditDeps, str] = Agent(
         model=model,
@@ -66,17 +78,21 @@ def build_proposer(client: LlmHostClient) -> Agent[BanditDeps, str]:
     return agent
 
 
-def build_verifier(client: LlmHostClient) -> Agent[None, str]:
-    """The verifier: independently checks the proposer's draft. Runs on Box B.
+def build_verifier(client: LlmHostClient, model_id: str | None = None) -> Agent[None, str]:
+    """The verifier: independently checks the proposer's draft.
 
     Small local models are unreliable at Pydantic AI's tool-based structured
     output, so the verifier runs in Ollama JSON mode (``force_json``) with the
     Verdict schema spelled out in its instructions, returns the JSON as plain
     text, and we parse it with :func:`parse_verdict` (tolerant fallback). This
-    is markedly more reliable than ToolOutput for a 9B model.
+    is markedly more reliable than ToolOutput for a small model.
+
+    ``model_id`` overrides the configured verifier model — used by the
+    verifier benchmark to test candidates head-to-head.
     """
     settings = get_settings()
-    model = WebSocketModel(client, model_name=settings.verifier_model_id, force_json=True)
+    mid = model_id or settings.verifier_model_id
+    model = WebSocketModel(client, model_name=mid, force_json=True)
     agent: Agent[None, str] = Agent(
         model=model,
         instructions=VERIFIER_SYSTEM,
