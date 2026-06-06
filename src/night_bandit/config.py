@@ -31,15 +31,17 @@ class Settings(BaseSettings):
     # lives under gigi-the-robot.com/bandit with no Cloudflare DNS work.
     ws_path: str = "/v6/bandit"
 
-    # --- Proposer LLM host (Box B, LAN / qwen) ---
-    # Roles reversed 2026-06-07: the proposer (easier job: drafting) runs on
-    # the 9B; the verifier (harder job: judging) runs on the 14B Ministral.
-    proposer_ws_url: str = "ws://192.168.0.194:3213/v5/model"
-    proposer_model_id: str = "qwen3.5:9b"
+    # --- Proposer LLM host (Box A, local / ministral) ---
+    # The verifier benchmark (eval/verifier_bench.py, 2026-06-07) found Qwen
+    # 9B the stronger VERIFIER (100% vs Ministral's 77%, whose misses were
+    # false positives on reasoning traps). So the sharper reasoner verifies
+    # and the larger-knowledge model drafts: Ministral proposes, Qwen verifies.
+    proposer_ws_url: str = "ws://127.0.0.1:3213/v5/model"
+    proposer_model_id: str = "ministral-3:14b"
 
-    # --- Verifier LLM host (Box A, local / ministral) ---
-    verifier_ws_url: str = "ws://127.0.0.1:3213/v5/model"
-    verifier_model_id: str = "ministral-3:14b"
+    # --- Verifier LLM host (Box B, LAN / qwen) ---
+    verifier_ws_url: str = "ws://192.168.0.194:3213/v5/model"
+    verifier_model_id: str = "qwen3.5:9b"
 
     # Caller identity stamped on every llm-host requestContext.
     caller_service: str = "night-bandit-agent-runtime"
