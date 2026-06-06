@@ -93,6 +93,21 @@ def encode_messages(messages: list[ModelMessage]) -> list[dict[str, Any]]:
     multi-step tool loop round-trips.
     """
     out: list[dict[str, Any]] = []
+
+    # Pydantic AI v1 delivers the agent's instructions (static, and from
+    # @agent.instructions) via ModelRequest.instructions — a string field,
+    # NOT a SystemPromptPart. It's set on the most recent request. Hoist it
+    # to a single leading system message; without this the persona and the
+    # verifier's JSON contract never reach the model.
+    instructions: str | None = None
+    for message in messages:
+        if isinstance(message, ModelRequest):
+            instr = getattr(message, "instructions", None)
+            if instr:
+                instructions = instr
+    if instructions:
+        out.append({"role": "system", "content": instructions})
+
     for message in messages:
         if isinstance(message, ModelRequest):
             for part in message.parts:
@@ -185,15 +200,22 @@ class WebSocketModel(Model):
         model_name: str,
         settings: ModelSettings | None = None,
         tool_call_text_format: str | None = None,
+        force_json: bool = False,
     ) -> None:
         """``tool_call_text_format`` enables tail-reliability repair of
         tool calls leaked as text. Pass ``"mistral"`` for Ministral
-        (proposer); leave ``None`` to disable. Other families (e.g. Qwen
-        Hermes-style) would get their own format key when needed."""
+        (proposer); leave ``None`` to disable.
+
+        ``force_json`` sets the host's ``responseFormat: 'json'`` so Ollama
+        constrains the model to emit valid JSON. Use for a structured
+        single-shot call (the verifier) where small models are far more
+        reliable in JSON mode than via tool-based structured output.
+        """
         super().__init__(settings=settings)
         self._client = client
         self._model_name = model_name
         self._tool_format = tool_call_text_format
+        self._force_json = force_json
 
     @property
     def provider(self) -> None:
@@ -223,6 +245,7 @@ class WebSocketModel(Model):
             messages=encode_messages(messages),
             tools=encode_tools(model_request_parameters),
             ollama_options=_ollama_options(model_settings),
+            response_format="json" if self._force_json else None,
         ):
             if isinstance(event, TextDelta):
                 text_chunks.append(event.text)
@@ -270,6 +293,7 @@ class WebSocketModel(Model):
             messages=encode_messages(messages),
             tools=encode_tools(model_request_parameters),
             ollama_options=_ollama_options(model_settings),
+            response_format="json" if self._force_json else None,
         )
         response = WebSocketStreamedResponse(
             model_request_parameters=model_request_parameters,

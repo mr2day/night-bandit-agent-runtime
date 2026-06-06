@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     max_steps: int = 8
     max_output_tokens: int = 4096
 
+    # --- Ensemble ---
+    # How many proposer<->verifier revise cycles before finalizing on
+    # disagreement. 1 = at most one revision, then ship the best draft
+    # (or the verifier's correction) and surface the disagreement.
+    ensemble_max_revisions: int = 1
+
     # --- Context window / compaction (proposer host is the landmark) ---
     proposer_num_ctx: int = 32768
     context_reserve_tokens: int = 3000
