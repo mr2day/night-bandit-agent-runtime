@@ -45,16 +45,44 @@ are uncorrelated: the proposer drafts, the verifier independently checks.
 
 ## Status
 
-Built and live-verified:
-- `llm/host_client.py` — async v5 client (infer stream, native tool calls,
-  multi-step tool loop, health/status). Verified against Box A + Box B.
-- `llm/ws_model.py` — Pydantic AI custom Model. Verified: non-streaming +
-  streaming runs, native tool loop (5/5), tool-leak repair net.
-- `config.py` — env-driven settings.
+The backend is complete and live-verified end-to-end:
+- `llm/` — v5 host client + Pydantic AI custom Model (native tool calls,
+  streaming, JSON mode, Mistral tool-leak repair).
+- `tools/` — get_current_time, search_web (Exa), fetch_page (Exa), browse
+  (Playwright).
+- `skills/` — SKILL.md loader + `use_skill` tool (example skills:
+  deep_research, check_current_info).
+- `agents/` — Night Bandit persona, proposer (Box A), verifier (Box B,
+  JSON-mode structured verdicts).
+- `orchestration/` — LangGraph proposer → verifier → (revise | finalize),
+  live transparency events (text deltas, tool calls/results, verdicts),
+  tool **evidence** passed to the verifier so it judges against facts.
+- `persistence/` — async pool, schema migrations, sessions/messages/
+  summaries repo (dedicated `night_bandit` schema).
+- `compaction/` — context-window math + idle compactor.
+- `gateway/` — FastAPI WebSocket gateway (IdP auth, session CRUD, turn
+  streaming) + Postgres checkpointer (durable execution).
 
-Next increments: tools (search_web / fetch_page / browse / get_current_time),
-skills loader, proposer/verifier agents + Night Bandit persona, the LangGraph
-ensemble graph, persistence + compactor, the FastAPI gateway.
+Verified: auth, session CRUD, multi-turn history, native tool use with
+correct result handling, the proposer/verifier ensemble (agreement +
+disagreement + revise), full live transparency, persistence + reload,
+durable checkpoints.
+
+Remaining (separate repo): the Angular UI (`night-bandit-agent-ui`).
+
+## Run
+
+```bash
+python -m venv .venv
+./.venv/Scripts/python -m pip install -e .   # Windows
+cp .env.example .env                          # then edit secrets
+./.venv/Scripts/python -m night_bandit.main   # starts ws://127.0.0.1:3220/v6/bandit
+```
+
+Requires the two swirlock-llm-host instances reachable (Box A local, Box B
+on the LAN) and Postgres reachable via `NB_PG_DSN`. Windows runs on the
+Selector event loop automatically (psycopg-async requirement). For `browse`,
+also run `./.venv/Scripts/playwright install chromium` once.
 
 ## Develop
 

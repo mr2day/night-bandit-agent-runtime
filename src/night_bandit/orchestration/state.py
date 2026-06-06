@@ -10,9 +10,11 @@ class EnsembleState(TypedDict, total=False):
     user_message: str
     timezone: str | None
     history: list[dict[str, str]]  # prior turns as {role, content}
+    summary_text: str | None  # concatenated compaction summaries, if any
 
     # Working state
     draft: str  # proposer's current draft
+    evidence: list[dict[str, Any]]  # proposer's tool calls+results this pass
     verdict: dict[str, Any] | None  # verifier's Verdict, model_dump()
     revisions: int  # how many revise cycles have happened
 

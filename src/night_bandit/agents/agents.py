@@ -12,6 +12,7 @@ from pydantic_ai import Agent, RunContext
 from ..config import get_settings
 from ..llm.host_client import LlmHostClient
 from ..llm.ws_model import WebSocketModel
+from ..skills import Skill, build_use_skill_tool
 from ..tools import builtin_tools
 from .persona import NIGHT_BANDIT_SYSTEM, VERIFIER_SYSTEM, substitute
 
@@ -51,18 +52,24 @@ def _repair_format_for(model_id: str) -> str | None:
     return None
 
 
-def build_proposer(client: LlmHostClient) -> Agent[BanditDeps, str]:
-    """The proposer: drafts answers, calls tools."""
+def build_proposer(
+    client: LlmHostClient, skills: list[Skill] | None = None
+) -> Agent[BanditDeps, str]:
+    """The proposer: drafts answers, calls tools, can invoke skills."""
     settings = get_settings()
     model = WebSocketModel(
         client,
         model_name=settings.proposer_model_id,
         tool_call_text_format=_repair_format_for(settings.proposer_model_id),
     )
+    tools = builtin_tools()
+    skill_tool = build_use_skill_tool(skills or [])
+    if skill_tool is not None:
+        tools.append(skill_tool)
     agent: Agent[BanditDeps, str] = Agent(
         model=model,
         deps_type=BanditDeps,
-        tools=builtin_tools(),
+        tools=tools,
         retries=2,
     )
 
